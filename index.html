@@ -454,6 +454,34 @@
             gap: 15px;
         }
 
+        .inline-edit {
+            width: 100%;
+            padding: 6px 8px;
+            border: 1px solid transparent;
+            background-color: transparent;
+            border-radius: 6px;
+            font-size: 0.95em;
+            color: #131628;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .inline-edit:hover {
+            border-color: rgba(111, 0, 255, 0.3);
+            background-color: rgba(111, 0, 255, 0.05);
+            cursor: pointer;
+        }
+
+        .inline-edit:focus {
+            border-color: #6f00ff;
+            background-color: #ffffff;
+            cursor: text;
+            outline: none;
+        }
+
+        select.inline-edit {
+            cursor: pointer;
+        }
+
         #loadingOverlay .spinner {
             width: 40px;
             height: 40px;
@@ -688,12 +716,10 @@
                         <label style="margin-bottom: 8px; font-size: 0.85em;">Category</label>
                         <select id="filterCategory" onchange="applyFilters()">
                             <option value="">All Categories</option>
-                            <option value="L1 Swag">L1 Swag</option>
-                            <option value="L2 Swag">L2 Swag</option>
-                            <option value="L3 Swag">L3 Swag</option>
+                            <option value="Swag">Swag</option>
+                            <option value="Branded Event Materials">Branded Event Materials</option>
                             <option value="Book Inventory">Book Inventory</option>
-                            <option value="Branded Gifts">Branded Gifts</option>
-                            <option value="Event Materials">Event Materials</option>
+                            <option value="General Event Materials">General Event Materials</option>
                         </select>
                     </div>
                     <div>
@@ -721,7 +747,7 @@
                             <th>Quantity</th>
                             <th>Alert Level</th>
                             <th>Status</th>
-                            <th>Used For Events</th>
+                            <th>Event</th>
                             <th>Date Added</th>
                             <th>Action</th>
                         </tr>
@@ -793,12 +819,10 @@
                 <div class="form-group">
                     <label>Category</label>
                     <select id="itemCategory">
-                        <option value="L1 Swag">L1 Swag</option>
-                        <option value="L2 Swag">L2 Swag</option>
-                        <option value="L3 Swag">L3 Swag</option>
+                        <option value="Swag">Swag</option>
+                        <option value="Branded Event Materials">Branded Event Materials</option>
                         <option value="Book Inventory">Book Inventory</option>
-                        <option value="Branded Gifts">Branded Gifts</option>
-                        <option value="Event Materials">Event Materials</option>
+                        <option value="General Event Materials">General Event Materials</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -813,20 +837,16 @@
                     <label>Used For Events (Select All That Apply)</label>
                     <div style="background-color: #f8f8f8; padding: 15px; border-radius: 8px;">
                         <div style="display: flex; align-items: center; margin-bottom: 10px;">
-                            <input type="checkbox" id="eventL1Day1" value="L1 Workshop Day 1" style="margin-right: 10px;">
-                            <label for="eventL1Day1" style="margin: 0; cursor: pointer;">L1 Workshop Day 1</label>
+                            <input type="checkbox" id="eventL1" value="L1" style="margin-right: 10px;">
+                            <label for="eventL1" style="margin: 0; cursor: pointer;">L1</label>
                         </div>
                         <div style="display: flex; align-items: center; margin-bottom: 10px;">
-                            <input type="checkbox" id="eventL1Day2" value="L1 Workshop Day 2" style="margin-right: 10px;">
-                            <label for="eventL1Day2" style="margin: 0; cursor: pointer;">L1 Workshop Day 2</label>
-                        </div>
-                        <div style="display: flex; align-items: center; margin-bottom: 10px;">
-                            <input type="checkbox" id="eventL2" value="L2 ACQ Advisory Board" style="margin-right: 10px;">
-                            <label for="eventL2" style="margin: 0; cursor: pointer;">L2 ACQ Advisory Board</label>
+                            <input type="checkbox" id="eventL2" value="L2" style="margin-right: 10px;">
+                            <label for="eventL2" style="margin: 0; cursor: pointer;">L2</label>
                         </div>
                         <div style="display: flex; align-items: center;">
-                            <input type="checkbox" id="eventL3" value="L3 Executive Boardroom" style="margin-right: 10px;">
-                            <label for="eventL3" style="margin: 0; cursor: pointer;">L3 Executive Boardroom</label>
+                            <input type="checkbox" id="eventL3" value="L3" style="margin-right: 10px;">
+                            <label for="eventL3" style="margin: 0; cursor: pointer;">L3</label>
                         </div>
                     </div>
                 </div>
@@ -840,7 +860,7 @@
         const API_URL = "https://script.google.com/macros/s/AKfycbxiliehx0ebRD0UqYPJwXcMBZIIYb-TpOWFO5X328Cob3_sif9djMR0wm23icfUgl5KtQ/exec";
         const POLL_INTERVAL_MS = 8000; // refresh from the sheet every 8 seconds so everyone sees everyone else's edits
 
-        const CATEGORIES = ['L1 Swag', 'L2 Swag', 'L3 Swag', 'Book Inventory', 'Branded Gifts', 'Event Materials'];
+        const CATEGORIES = ['Swag', 'Branded Event Materials', 'Book Inventory', 'General Event Materials'];
 
         let inventory = {};
         CATEGORIES.forEach(c => inventory[c] = []);
@@ -903,18 +923,20 @@
                 const data = await apiGet();
 
                 // Items -> inventory grouped by category
+                // Categories not in the current CATEGORIES list (e.g. old names) are kept as
+                // their own group instead of being dropped, so no data silently disappears.
                 const freshInventory = {};
                 CATEGORIES.forEach(c => freshInventory[c] = []);
                 (data.items || []).forEach(row => {
-                    const cat = row.category && freshInventory[row.category] ? row.category : (CATEGORIES.includes(row.category) ? row.category : null);
-                    const targetCat = freshInventory[row.category] ? row.category : null;
-                    if (!targetCat) return; // skip rows with unknown/blank category
-                    freshInventory[row.category].push({
+                    const cat = row.category && String(row.category).trim() ? row.category : 'Uncategorized';
+                    if (!freshInventory[cat]) freshInventory[cat] = [];
+                    freshInventory[cat].push({
                         id: row.id,
                         name: row.name,
                         quantity: Number(row.quantity) || 0,
                         threshold: Number(row.threshold) || 0,
-                        dateAdded: row.dateAdded || ''
+                        dateAdded: row.dateAdded || '',
+                        usedForEvents: row.usedForEvents || ''
                     });
                 });
                 inventory = freshInventory;
@@ -1036,12 +1058,18 @@
                 return;
             }
 
+            const usedForEvents = ['eventL1', 'eventL2', 'eventL3']
+                .filter(id => document.getElementById(id).checked)
+                .map(id => document.getElementById(id).value)
+                .join(', ');
+
             const item = {
                 id: Date.now(),
                 name: name,
                 quantity: quantity,
                 threshold: threshold || 10,
-                dateAdded: new Date().toLocaleDateString()
+                dateAdded: new Date().toLocaleDateString(),
+                usedForEvents: usedForEvents
             };
 
             const btn = document.getElementById('addItemSubmitBtn');
@@ -1055,6 +1083,7 @@
                 document.getElementById('itemName').value = '';
                 document.getElementById('itemQuantity').value = '';
                 document.getElementById('itemThreshold').value = '10';
+                ['eventL1', 'eventL2', 'eventL3'].forEach(id => document.getElementById(id).checked = false);
 
                 closeAddItemModal();
                 await loadAllData(false);
@@ -1080,6 +1109,93 @@
             }
         }
 
+        function escapeHtml(str) {
+            return String(str == null ? '' : str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function buildItemRowHtml(item, category) {
+            const isLowStock = item.quantity <= item.threshold;
+            const statusBadge = isLowStock
+                ? '<span class="low-stock-warning">Low Stock</span>'
+                : '<span style="color: #6f00ff;">In Stock</span>';
+
+            const categoryOptions = CATEGORIES.map(c =>
+                `<option value="${escapeHtml(c)}" ${c === category ? 'selected' : ''}>${escapeHtml(c)}</option>`
+            ).join('');
+            // Preserve a legacy category (not in the new list) as a selectable option too,
+            // so nothing looks blank until it's manually reassigned.
+            const categoryOptionsFull = CATEGORIES.includes(category)
+                ? categoryOptions
+                : `<option value="${escapeHtml(category)}" selected>${escapeHtml(category)} (legacy)</option>` + categoryOptions;
+
+            return `
+                <tr data-item-id="${item.id}">
+                    <td class="checkbox-col"><input type="checkbox"></td>
+                    <td>
+                        <input type="text" class="inline-edit" value="${escapeHtml(item.name)}"
+                            onblur="saveItemField('${item.id}','name',this.value)"
+                            onkeydown="if(event.key==='Enter')this.blur()">
+                    </td>
+                    <td>
+                        <select class="inline-edit" onchange="saveItemField('${item.id}','category',this.value)">
+                            ${categoryOptionsFull}
+                        </select>
+                    </td>
+                    <td>
+                        <input type="number" class="inline-edit" min="0" value="${item.quantity}"
+                            onblur="saveItemField('${item.id}','quantity',this.value)"
+                            onkeydown="if(event.key==='Enter')this.blur()">
+                    </td>
+                    <td>${item.threshold}</td>
+                    <td>${statusBadge}</td>
+                    <td>${escapeHtml(item.usedForEvents || '')}</td>
+                    <td>${escapeHtml(item.dateAdded)}</td>
+                    <td>
+                        <button class="delete-btn" style="background-color:#6f00ff; margin-right:6px;" onclick="focusEditRow('${item.id}')">Edit</button>
+                        <button class="delete-btn" onclick="deleteItem('${item.id}')">Delete</button>
+                    </td>
+                </tr>
+            `;
+        }
+
+        function focusEditRow(id) {
+            const row = document.querySelector(`tr[data-item-id="${id}"]`);
+            if (!row) return;
+            const input = row.querySelector('input[type="text"]');
+            if (input) { input.focus(); input.select(); }
+        }
+
+        async function saveItemField(id, field, value) {
+            if (field === 'quantity') {
+                value = parseInt(value);
+                if (isNaN(value) || value < 0) {
+                    alert('Please enter a valid quantity');
+                    await loadAllData(false);
+                    return;
+                }
+            }
+            if (field === 'name' && !String(value).trim()) {
+                alert('Name cannot be empty');
+                await loadAllData(false);
+                return;
+            }
+
+            setSyncStatus('saving');
+            try {
+                await apiPost({ action: 'updateItemField', id: id, field: field, value: value });
+                await loadAllData(false);
+            } catch (err) {
+                console.error(err);
+                setSyncStatus('error');
+                alert('Could not save this change. Please try again.');
+            }
+        }
+
         function renderItemsTable() {
             const tbody = document.getElementById('itemsTableBody');
             let html = '';
@@ -1088,28 +1204,12 @@
             for (const category in inventory) {
                 inventory[category].forEach(item => {
                     hasItems = true;
-                    const isLowStock = item.quantity <= item.threshold;
-                    const statusBadge = isLowStock 
-                        ? '<span class="low-stock-warning">Low Stock</span>' 
-                        : '<span style="color: #6f00ff;">In Stock</span>';
-
-                    html += `
-                        <tr>
-                            <td class="checkbox-col"><input type="checkbox"></td>
-                            <td><span class="item-name-link">${item.name}</span></td>
-                            <td>${category}</td>
-                            <td><span class="stock-number">${item.quantity}</span></td>
-                            <td>${item.threshold}</td>
-                            <td>${statusBadge}</td>
-                            <td>${item.dateAdded}</td>
-                            <td><button class="delete-btn" onclick="deleteItem('${item.id}')">Delete</button></td>
-                        </tr>
-                    `;
+                    html += buildItemRowHtml(item, category);
                 });
             }
 
             if (!hasItems) {
-                html = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: #999;">No items added yet</td></tr>';
+                html = '<tr><td colspan="9" style="text-align: center; padding: 40px; color: #999;">No items added yet</td></tr>';
             }
 
             tbody.innerHTML = html;
@@ -1132,28 +1232,12 @@
                     if (dateFilter && item.dateAdded !== dateFilter) return;
 
                     hasItems = true;
-                    const isLowStock = item.quantity <= item.threshold;
-                    const statusBadge = isLowStock 
-                        ? '<span class="low-stock-warning">Low Stock</span>' 
-                        : '<span style="color: #6f00ff;">In Stock</span>';
-
-                    html += `
-                        <tr>
-                            <td class="checkbox-col"><input type="checkbox"></td>
-                            <td><span class="item-name-link">${item.name}</span></td>
-                            <td>${category}</td>
-                            <td><span class="stock-number">${item.quantity}</span></td>
-                            <td>${item.threshold}</td>
-                            <td>${statusBadge}</td>
-                            <td>${item.dateAdded}</td>
-                            <td><button class="delete-btn" onclick="deleteItem('${item.id}')">Delete</button></td>
-                        </tr>
-                    `;
+                    html += buildItemRowHtml(item, category);
                 });
             }
 
             if (!hasItems) {
-                html = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: #999;">No items match your filters</td></tr>';
+                html = '<tr><td colspan="9" style="text-align: center; padding: 40px; color: #999;">No items match your filters</td></tr>';
             }
 
             tbody.innerHTML = html;
