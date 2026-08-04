@@ -1109,6 +1109,19 @@
             }
         }
 
+        function formatDateOnly(value) {
+            if (!value) return '';
+            const str = String(value).trim();
+            // Sheets sometimes auto-converts the date string into a real datetime value,
+            // which comes back as an ISO string with a time attached (e.g. 2026-08-03T07:00:00.000Z)
+            let m = str.match(/^(\d{4})-(\d{2})-(\d{2})T/);
+            if (m) return `${m[2]}/${m[3]}/${m[1]}`;
+            // Plain M/D/YYYY -> zero-padded MM/DD/YYYY
+            m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+            if (m) return `${m[1].padStart(2, '0')}/${m[2].padStart(2, '0')}/${m[3]}`;
+            return str;
+        }
+
         function escapeHtml(str) {
             return String(str == null ? '' : str)
                 .replace(/&/g, '&amp;')
@@ -1153,21 +1166,30 @@
                     </td>
                     <td>${item.threshold}</td>
                     <td>${statusBadge}</td>
-                    <td>${escapeHtml(item.usedForEvents || '')}</td>
-                    <td>${escapeHtml(item.dateAdded)}</td>
+                    <td>${buildEventCellHtml(item)}</td>
+                    <td>${escapeHtml(formatDateOnly(item.dateAdded))}</td>
                     <td>
-                        <button class="delete-btn" style="background-color:#6f00ff; margin-right:6px;" onclick="focusEditRow('${item.id}')">Edit</button>
                         <button class="delete-btn" onclick="deleteItem('${item.id}')">Delete</button>
                     </td>
                 </tr>
             `;
         }
 
-        function focusEditRow(id) {
-            const row = document.querySelector(`tr[data-item-id="${id}"]`);
-            if (!row) return;
-            const input = row.querySelector('input[type="text"]');
-            if (input) { input.focus(); input.select(); }
+        function buildEventCellHtml(item) {
+            const selected = (item.usedForEvents || '').split(',').map(s => s.trim()).filter(Boolean);
+            const options = ['L1', 'L2', 'L3'];
+            return options.map(opt => `
+                <label style="display:inline-flex; align-items:center; margin-right:10px; font-size:0.85em; cursor:pointer; white-space:nowrap;">
+                    <input type="checkbox" class="event-checkbox" value="${opt}" ${selected.includes(opt) ? 'checked' : ''}
+                        onchange="saveEventCheckbox('${item.id}', this)" style="margin-right:4px; width:14px; height:14px; cursor:pointer;">${opt}
+                </label>
+            `).join('');
+        }
+
+        async function saveEventCheckbox(id, checkboxEl) {
+            const row = checkboxEl.closest('tr');
+            const checked = Array.from(row.querySelectorAll('.event-checkbox:checked')).map(c => c.value);
+            await saveItemField(id, 'usedForEvents', checked.join(', '));
         }
 
         async function saveItemField(id, field, value) {
