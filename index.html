@@ -798,11 +798,20 @@
                         </select>
                     </div>
                     <div>
-                        <label style="margin-bottom: 8px; font-size: 0.85em;">Stock Level</label>
+                        <label style="margin-bottom: 8px; font-size: 0.85em;">Status</label>
                         <select id="filterStock" onchange="applyFilters()">
-                            <option value="">All Stock Levels</option>
+                            <option value="">All Statuses</option>
                             <option value="low">Low Stock Only</option>
                             <option value="high">In Stock</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="margin-bottom: 8px; font-size: 0.85em;">Event</label>
+                        <select id="filterEvent" onchange="applyFilters()">
+                            <option value="">All Events</option>
+                            <option value="L1">L1</option>
+                            <option value="L2">L2</option>
+                            <option value="L3">L3</option>
                         </select>
                     </div>
                     <div>
@@ -1422,6 +1431,7 @@
             const tbody = document.getElementById('itemsTableBody');
             const categoryFilter = document.getElementById('filterCategory').value;
             const stockFilter = document.getElementById('filterStock').value;
+            const eventFilter = document.getElementById('filterEvent').value;
             const dateFilter = document.getElementById('filterDate').value;
 
             let html = '';
@@ -1432,6 +1442,10 @@
                     if (categoryFilter && category !== categoryFilter) return;
                     if (stockFilter === 'low' && item.quantity > item.threshold) return;
                     if (stockFilter === 'high' && item.quantity <= item.threshold) return;
+                    if (eventFilter) {
+                        const tags = (item.usedForEvents || '').split(',').map(s => s.trim());
+                        if (!tags.includes(eventFilter)) return;
+                    }
                     if (dateFilter && item.dateAdded !== dateFilter) return;
 
                     hasItems = true;
