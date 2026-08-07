@@ -509,7 +509,6 @@
         <div class="logo">📦 Inventory</div>
         <div class="nav-item active" onclick="switchTab('home')">Home</div>
         <div class="nav-item" onclick="switchTab('items')">Items</div>
-        <div class="nav-item" onclick="switchTab('inventory')">Inventory</div>
         <div class="nav-item" onclick="switchTab('events')">Events</div>
         <div class="nav-item" onclick="switchTab('shipping')">Shipping</div>
     </div>
@@ -823,41 +822,40 @@
                     </tbody>
                 </table>
             </div>
-        </div>
 
-        <!-- INVENTORY PAGE -->
-        <div id="inventory" class="page">
-            <h1>Adjust Inventory</h1>
-            
-            <div class="form-section">
-                <h2>Add or Remove Inventory</h2>
-                <div class="form-group">
-                    <label>Select Item</label>
-                    <select id="adjustItemSelect" onchange="updateAdjustmentForm()">
-                        <option value="">-- Select an item --</option>
-                    </select>
-                </div>
-                <div id="adjustmentDetails" style="display: none;">
+            <!-- Adjust Inventory (with reason/audit trail) -->
+            <div style="margin-top: 40px;">
+                <h2 style="margin-bottom: 20px;">Adjust Inventory (with a Reason)</h2>
+                <p style="color: #666; font-size: 0.9em; margin-bottom: 20px;">You can already edit Name, Category, and Quantity directly in the table above by clicking into them. Use this form instead when you want the change logged with a reason below (e.g. stock recount, damage, event use).</p>
+                <div class="form-section">
                     <div class="form-group">
-                        <label>Current Stock</label>
-                        <input type="text" id="currentStock" disabled style="background-color: #f0f0f0;">
-                    </div>
-                    <div class="form-group">
-                        <label>Adjustment Type</label>
-                        <select id="adjustmentType" onchange="updateAdjustmentForm()">
-                            <option value="add">Add to Inventory</option>
-                            <option value="subtract">Remove from Inventory</option>
+                        <label>Select Item</label>
+                        <select id="adjustItemSelect" onchange="updateAdjustmentForm()">
+                            <option value="">-- Select an item --</option>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label>Quantity</label>
-                        <input type="number" id="adjustmentQuantity" placeholder="Enter quantity" min="1">
+                    <div id="adjustmentDetails" style="display: none;">
+                        <div class="form-group">
+                            <label>Current Stock</label>
+                            <input type="text" id="currentStock" disabled style="background-color: #f0f0f0;">
+                        </div>
+                        <div class="form-group">
+                            <label>Adjustment Type</label>
+                            <select id="adjustmentType" onchange="updateAdjustmentForm()">
+                                <option value="add">Add to Inventory</option>
+                                <option value="subtract">Remove from Inventory</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Quantity</label>
+                            <input type="number" id="adjustmentQuantity" placeholder="Enter quantity" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label>Reason (Optional)</label>
+                            <textarea id="adjustmentReason" placeholder="e.g., Event held, Stock correction, Recount"></textarea>
+                        </div>
+                        <button onclick="applyInventoryAdjustment()">Apply Adjustment</button>
                     </div>
-                    <div class="form-group">
-                        <label>Reason (Optional)</label>
-                        <textarea id="adjustmentReason" placeholder="e.g., Event held, Stock correction, Recount"></textarea>
-                    </div>
-                    <button onclick="applyInventoryAdjustment()">Apply Adjustment</button>
                 </div>
             </div>
 
@@ -1068,7 +1066,6 @@
                 updateDashboard();
             } else if (currentTab === 'items') {
                 renderItemsTable();
-            } else if (currentTab === 'inventory') {
                 populateInventorySelect();
                 renderAdjustmentsSummary();
             } else if (currentTab === 'events') {
