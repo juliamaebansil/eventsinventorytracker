@@ -565,10 +565,9 @@
                     <label>Event Type</label>
                     <select id="eventType" onchange="updateEventPreview()">
                         <option value="">-- Select Event Type --</option>
-                        <option value="L1 Workshop Day 1">L1 Workshop Day 1</option>
-                        <option value="L1 Workshop Day 2">L1 Workshop Day 2</option>
-                        <option value="L2 ACQ Advisory Board">L2 ACQ Advisory Board</option>
-                        <option value="L3 Executive Boardroom">L3 Executive Boardroom</option>
+                        <option value="L1">L1</option>
+                        <option value="L2">L2</option>
+                        <option value="L3">L3</option>
                         <option value="other">Other / Manual Adjustment</option>
                     </select>
                 </div>
@@ -576,11 +575,17 @@
                 <div id="standardEventFields" style="display: none;">
                     <div class="form-group">
                         <label>Number of Guests</label>
-                        <input type="number" id="guestCount" placeholder="Enter guest count" min="1" onchange="updateEventPreview()">
+                        <input type="number" id="guestCount" placeholder="Enter guest count" min="1" onchange="refreshEventPreview()" oninput="refreshEventPreview()">
                     </div>
                     <div class="form-group">
                         <label>Event Date</label>
                         <input type="date" id="eventDate">
+                    </div>
+                    <div class="form-group">
+                        <label>Select Materials To Deduct</label>
+                        <div id="eventItemsChecklist" style="background-color: #f8f8f8; padding: 15px; border-radius: 8px;">
+                            <p style="color: #999; margin: 0;">Select an event type above to see its tagged materials.</p>
+                        </div>
                     </div>
                 </div>
 
@@ -911,12 +916,6 @@
         let adjustmentsHistory = [];
         let currentSelectedItem = null;
         let shipments = [];
-        let eventTemplates = {
-            'L1 Workshop Day 1': ['Tumbler', 'ACQ Branded Socks', 'Scaling Workshop Books', 'Pens'],
-            'L1 Workshop Day 2': ['$100M Offers Book', '$100M Leads Book'],
-            'L2 ACQ Advisory Board': ['Luggage Tags', 'Passport Holders', 'Packing Cubes', 'Small Branded Bags', 'L2 Folios'],
-            'L3 Executive Boardroom': ['L3 Folio', 'Executive Pens', 'Plaque']
-        };
         let eventHistory = [];
 
         let isFirstLoad = true;
@@ -1679,7 +1678,6 @@
 
         function updateEventPreview() {
             const eventType = document.getElementById('eventType').value;
-            const guestCount = parseInt(document.getElementById('guestCount').value);
             const standardFields = document.getElementById('standardEventFields');
             const manualFields = document.getElementById('manualAdjustmentFields');
             const eventPreview = document.getElementById('eventPreview');
@@ -1698,29 +1696,8 @@
                 eventSubmitBtn.style.display = 'block';
                 manualSubmitBtn.style.display = 'none';
 
-                if (guestCount > 0) {
-                    const items = eventTemplates[eventType] || [];
-                    let previewHTML = '';
-
-                    items.forEach(itemName => {
-                        for (const category in inventory) {
-                            const foundItem = inventory[category].find(i => i.name === itemName);
-                            if (foundItem) {
-                                const newQty = foundItem.quantity - guestCount;
-                                const color = newQty < 0 ? '#ff4444' : '#131628';
-                                previewHTML += `<div style="padding: 8px; border-bottom: 1px solid #ddd; color: ${color};">
-                                    ${itemName}: ${foundItem.quantity} → ${newQty} units
-                                </div>`;
-                                return;
-                            }
-                        }
-                    });
-
-                    document.getElementById('previewList').innerHTML = previewHTML;
-                    eventPreview.style.display = 'block';
-                } else {
-                    eventPreview.style.display = 'none';
-                }
+                populateEventItemsChecklist(eventType);
+                refreshEventPreview();
             } else {
                 standardFields.style.display = 'none';
                 manualFields.style.display = 'none';
@@ -1728,6 +1705,61 @@
                 eventSubmitBtn.style.display = 'none';
                 manualSubmitBtn.style.display = 'none';
             }
+        }
+
+        function getItemsForEventLevel(level) {
+            const results = [];
+            for (const category in inventory) {
+                inventory[category].forEach(item => {
+                    const tags = (item.usedForEvents || '').split(',').map(s => s.trim()).filter(Boolean);
+                    if (tags.includes(level)) {
+                        results.push({ ...item, category });
+                    }
+                });
+            }
+            return results;
+        }
+
+        function populateEventItemsChecklist(eventType) {
+            const container = document.getElementById('eventItemsChecklist');
+            const items = getItemsForEventLevel(eventType);
+
+            if (items.length === 0) {
+                container.innerHTML = `<p style="color: #999; margin: 0;">No items are tagged for ${escapeHtml(eventType)} yet. Go to the Items tab and check the ${escapeHtml(eventType)} box in the Event column for any materials this event uses.</p>`;
+                return;
+            }
+
+            container.innerHTML = items.map(item => `
+                <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                    <input type="checkbox" class="event-item-checkbox" value="${item.id}" data-category="${escapeHtml(item.category)}" checked onchange="refreshEventPreview()" style="margin-right: 10px; width: 16px; height: 16px; cursor: pointer;">
+                    <label style="margin: 0; cursor: pointer;">${escapeHtml(item.name)} <span style="color: #999; font-size: 0.85em;">(${escapeHtml(item.category)} — currently ${item.quantity})</span></label>
+                </div>
+            `).join('');
+        }
+
+        function refreshEventPreview() {
+            const guestCount = parseInt(document.getElementById('guestCount').value);
+            const eventPreview = document.getElementById('eventPreview');
+            const checkboxes = document.querySelectorAll('.event-item-checkbox:checked');
+
+            if (!guestCount || guestCount <= 0 || checkboxes.length === 0) {
+                eventPreview.style.display = 'none';
+                return;
+            }
+
+            let previewHTML = '';
+            checkboxes.forEach(cb => {
+                const category = cb.dataset.category;
+                const itemObj = (inventory[category] || []).find(i => String(i.id) === String(cb.value));
+                if (itemObj) {
+                    const newQty = itemObj.quantity - guestCount;
+                    const color = newQty < 0 ? '#ff4444' : '#131628';
+                    previewHTML += `<div style="padding: 8px; border-bottom: 1px solid #ddd; color: ${color};">${escapeHtml(itemObj.name)}: ${itemObj.quantity} → ${newQty} units</div>`;
+                }
+            });
+
+            document.getElementById('previewList').innerHTML = previewHTML;
+            eventPreview.style.display = previewHTML ? 'block' : 'none';
         }
 
         async function submitEvent() {
@@ -1740,19 +1772,22 @@
                 return;
             }
 
-            const items = eventTemplates[eventType] || [];
+            const checkboxes = document.querySelectorAll('.event-item-checkbox:checked');
+            if (checkboxes.length === 0) {
+                alert('Please select at least one material to deduct');
+                return;
+            }
+
             const itemsDeducted = [];
             const quantityUpdates = [];
 
-            items.forEach(itemName => {
-                for (const category in inventory) {
-                    const foundItem = inventory[category].find(i => i.name === itemName);
-                    if (foundItem) {
-                        const newQty = Math.max(0, foundItem.quantity - guestCount);
-                        quantityUpdates.push({ id: foundItem.id, quantity: newQty });
-                        itemsDeducted.push(itemName);
-                        return;
-                    }
+            checkboxes.forEach(cb => {
+                const category = cb.dataset.category;
+                const itemObj = (inventory[category] || []).find(i => String(i.id) === String(cb.value));
+                if (itemObj) {
+                    const newQty = Math.max(0, itemObj.quantity - guestCount);
+                    quantityUpdates.push({ id: itemObj.id, quantity: newQty });
+                    itemsDeducted.push(itemObj.name);
                 }
             });
 
@@ -1779,6 +1814,9 @@
                 document.getElementById('guestCount').value = '';
                 document.getElementById('eventDate').value = '';
                 document.getElementById('eventPreview').style.display = 'none';
+                document.getElementById('standardEventFields').style.display = 'none';
+                document.getElementById('eventSubmitBtn').style.display = 'none';
+                document.getElementById('eventItemsChecklist').innerHTML = '<p style="color: #999; margin: 0;">Select an event type above to see its tagged materials.</p>';
 
                 await loadAllData(false);
                 alert(`Event logged! Deducted items from ${itemsDeducted.length} inventory items.`);
