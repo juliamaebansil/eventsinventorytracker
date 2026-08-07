@@ -747,6 +747,24 @@
             </div>
         </div>
 
+        <!-- Edit Guest Count Modal -->
+        <div id="editGuestCountModal" class="form-modal">
+            <div class="form-modal-content">
+                <span class="modal-close" onclick="closeEditGuestCountModal()">&times;</span>
+                <h2 style="margin-bottom: 20px; color: #131628; font-weight: 800; text-transform: uppercase;">Edit Guest Count</h2>
+                <div class="form-group">
+                    <label>Event</label>
+                    <input type="text" id="editGuestCountEventLabel" disabled style="background-color: #f0f0f0;">
+                </div>
+                <div class="form-group">
+                    <label>New Guest Count</label>
+                    <input type="number" id="editGuestCountValue" min="0">
+                </div>
+                <p style="color: #666; font-size: 0.85em; margin-bottom: 15px;">The inventory for the items this event originally deducted will automatically adjust up or down by the difference.</p>
+                <button id="saveGuestCountBtn" onclick="saveGuestCountEdit()" style="width: 100%;">Save</button>
+            </div>
+        </div>
+
         <!-- ITEMS PAGE -->
         <div id="items" class="page">
             <div class="items-header">
@@ -1903,18 +1921,98 @@
 
             let html = '';
             eventHistory.slice().reverse().forEach(event => {
+                const canEditGuestCount = event.guestCount && event.guestCount > 0;
                 html += `
                     <tr>
-                        <td>${event.eventType}</td>
+                        <td>${escapeHtml(event.eventType)}</td>
                         <td>${event.guestCount || 'Manual'}</td>
-                        <td>${(event.itemsDeducted || []).join(', ')}</td>
-                        <td>${event.date}</td>
-                        <td><button class="delete-btn" onclick="deleteEvent('${event.id}')">Delete</button></td>
+                        <td>${escapeHtml((event.itemsDeducted || []).join(', '))}</td>
+                        <td>${escapeHtml(formatDateOnly(event.date))}</td>
+                        <td>
+                            ${canEditGuestCount ? `<button class="delete-btn" style="background-color:#6f00ff; margin-right:6px;" onclick="openEditGuestCountModal('${event.id}')">Edit</button>` : ''}
+                            <button class="delete-btn" onclick="deleteEvent('${event.id}')">Delete</button>
+                        </td>
                     </tr>
                 `;
             });
 
             tbody.innerHTML = html;
+        }
+
+        let currentEditEventId = null;
+
+        function openEditGuestCountModal(eventId) {
+            const event = eventHistory.find(e => String(e.id) === String(eventId));
+            if (!event) return;
+            currentEditEventId = eventId;
+            document.getElementById('editGuestCountEventLabel').value = `${event.eventType} — ${formatDateOnly(event.date)}`;
+            document.getElementById('editGuestCountValue').value = event.guestCount;
+            document.getElementById('editGuestCountModal').classList.add('show');
+        }
+
+        function closeEditGuestCountModal() {
+            document.getElementById('editGuestCountModal').classList.remove('show');
+            currentEditEventId = null;
+        }
+
+        async function saveGuestCountEdit() {
+            if (!currentEditEventId) return;
+            const event = eventHistory.find(e => String(e.id) === String(currentEditEventId));
+            if (!event) {
+                closeEditGuestCountModal();
+                return;
+            }
+
+            const newGuestCount = parseInt(document.getElementById('editGuestCountValue').value);
+            if (isNaN(newGuestCount) || newGuestCount < 0) {
+                alert('Please enter a valid guest count');
+                return;
+            }
+
+            const oldGuestCount = event.guestCount || 0;
+            const delta = newGuestCount - oldGuestCount; // positive = deduct more, negative = add stock back
+
+            if (delta === 0) {
+                closeEditGuestCountModal();
+                return;
+            }
+
+            const btn = document.getElementById('saveGuestCountBtn');
+            btn.disabled = true;
+            setSyncStatus('saving');
+
+            try {
+                const itemNames = event.itemsDeducted || [];
+                const notFound = [];
+
+                for (const name of itemNames) {
+                    let found = null;
+                    for (const category in inventory) {
+                        const match = inventory[category].find(i => i.name === name);
+                        if (match) { found = match; break; }
+                    }
+                    if (!found) { notFound.push(name); continue; }
+                    const newQty = Math.max(0, found.quantity - delta);
+                    await apiPost({ action: 'updateItemQuantity', id: found.id, quantity: newQty });
+                }
+
+                await apiPost({ action: 'updateRowFields', sheet: 'Events', id: event.id, fields: { guestCount: newGuestCount } });
+
+                closeEditGuestCountModal();
+                await loadAllData(false);
+
+                if (notFound.length > 0) {
+                    alert(`Guest count updated. Note: could not find these items to adjust automatically (they may have been renamed or deleted): ${notFound.join(', ')}`);
+                } else {
+                    alert('Guest count updated and inventory adjusted.');
+                }
+            } catch (err) {
+                console.error(err);
+                setSyncStatus('error');
+                alert('Could not update guest count. Please try again.');
+            } finally {
+                btn.disabled = false;
+            }
         }
 
         async function deleteEvent(id) {
