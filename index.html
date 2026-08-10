@@ -1025,7 +1025,7 @@
                             <option value="L1">L1</option>
                             <option value="L2">L2</option>
                             <option value="L3">L3</option>
-                            <option value="None">None</option>
+                            <option value="Internal">Internal Event Material</option>
                         </select>
                     </div>
                     <div>
@@ -1139,25 +1139,21 @@
                 <div class="form-group">
                     <label>Used For Events (Select All That Apply)</label>
                     <div style="background-color: #f8f8f8; padding: 15px; border-radius: 8px;">
-                        <div style="display: flex; align-items: center; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #ddd;">
-                            <input type="checkbox" id="eventNone" onchange="toggleAddItemEventNone()" style="margin-right: 10px;">
-                            <label for="eventNone" style="margin: 0; cursor: pointer; font-weight: 600;">None</label>
-                        </div>
-                        <div style="display: flex; align-items: center; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #ddd;">
-                            <input type="checkbox" id="eventAll" onchange="toggleAddItemEventAll()" style="margin-right: 10px;">
-                            <label for="eventAll" style="margin: 0; cursor: pointer; font-weight: 600;">All Events</label>
-                        </div>
                         <div style="display: flex; align-items: center; margin-bottom: 10px;">
-                            <input type="checkbox" id="eventL1" value="L1" onchange="syncAddItemEventAll()" style="margin-right: 10px;">
+                            <input type="checkbox" id="eventL1" value="L1" style="margin-right: 10px;">
                             <label for="eventL1" style="margin: 0; cursor: pointer;">L1</label>
                         </div>
                         <div style="display: flex; align-items: center; margin-bottom: 10px;">
-                            <input type="checkbox" id="eventL2" value="L2" onchange="syncAddItemEventAll()" style="margin-right: 10px;">
+                            <input type="checkbox" id="eventL2" value="L2" style="margin-right: 10px;">
                             <label for="eventL2" style="margin: 0; cursor: pointer;">L2</label>
                         </div>
-                        <div style="display: flex; align-items: center;">
-                            <input type="checkbox" id="eventL3" value="L3" onchange="syncAddItemEventAll()" style="margin-right: 10px;">
+                        <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                            <input type="checkbox" id="eventL3" value="L3" style="margin-right: 10px;">
                             <label for="eventL3" style="margin: 0; cursor: pointer;">L3</label>
+                        </div>
+                        <div style="display: flex; align-items: center;">
+                            <input type="checkbox" id="eventInternal" value="Internal" style="margin-right: 10px;">
+                            <label for="eventInternal" style="margin: 0; cursor: pointer;">Internal Event Material</label>
                         </div>
                     </div>
                 </div>
@@ -1189,25 +1185,21 @@
                 <div class="form-group">
                     <label>Used For Events</label>
                     <div style="background-color: #f8f8f8; padding: 15px; border-radius: 8px;">
-                        <div style="display: flex; align-items: center; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #ddd;">
-                            <input type="checkbox" id="editItemEventNone" onchange="toggleEditItemEventNone()" style="margin-right: 10px;">
-                            <label for="editItemEventNone" style="margin: 0; cursor: pointer; font-weight: 600;">None</label>
-                        </div>
-                        <div style="display: flex; align-items: center; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #ddd;">
-                            <input type="checkbox" id="editItemEventAll" onchange="toggleEditItemEventAll()" style="margin-right: 10px;">
-                            <label for="editItemEventAll" style="margin: 0; cursor: pointer; font-weight: 600;">All Events</label>
-                        </div>
                         <div style="display: flex; align-items: center; margin-bottom: 10px;">
-                            <input type="checkbox" id="editItemEventL1" onchange="syncEditItemEventAll()" style="margin-right: 10px;">
+                            <input type="checkbox" id="editItemEventL1" style="margin-right: 10px;">
                             <label for="editItemEventL1" style="margin: 0; cursor: pointer;">L1</label>
                         </div>
                         <div style="display: flex; align-items: center; margin-bottom: 10px;">
-                            <input type="checkbox" id="editItemEventL2" onchange="syncEditItemEventAll()" style="margin-right: 10px;">
+                            <input type="checkbox" id="editItemEventL2" style="margin-right: 10px;">
                             <label for="editItemEventL2" style="margin: 0; cursor: pointer;">L2</label>
                         </div>
-                        <div style="display: flex; align-items: center;">
-                            <input type="checkbox" id="editItemEventL3" onchange="syncEditItemEventAll()" style="margin-right: 10px;">
+                        <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                            <input type="checkbox" id="editItemEventL3" style="margin-right: 10px;">
                             <label for="editItemEventL3" style="margin: 0; cursor: pointer;">L3</label>
+                        </div>
+                        <div style="display: flex; align-items: center;">
+                            <input type="checkbox" id="editItemEventInternal" style="margin-right: 10px;">
+                            <label for="editItemEventInternal" style="margin: 0; cursor: pointer;">Internal Event Material</label>
                         </div>
                     </div>
                 </div>
@@ -1374,7 +1366,7 @@
             if (currentTab === 'home') {
                 updateDashboard();
             } else if (currentTab === 'items') {
-                renderItemsTable();
+                applyFilters(); // re-applies whatever filters are currently selected, instead of always showing everything
                 populateInventorySelect();
                 renderAdjustmentsSummary();
             } else if (currentTab === 'events') {
@@ -1424,44 +1416,6 @@
             document.getElementById('addItemModal').classList.remove('show');
         }
 
-        function toggleAddItemEventNone() {
-            if (document.getElementById('eventNone').checked) {
-                ['eventAll', 'eventL1', 'eventL2', 'eventL3'].forEach(id => document.getElementById(id).checked = false);
-            }
-        }
-
-        function toggleAddItemEventAll() {
-            const checked = document.getElementById('eventAll').checked;
-            ['eventL1', 'eventL2', 'eventL3'].forEach(id => document.getElementById(id).checked = checked);
-            if (checked) document.getElementById('eventNone').checked = false;
-        }
-
-        function syncAddItemEventAll() {
-            const allChecked = ['eventL1', 'eventL2', 'eventL3'].every(id => document.getElementById(id).checked);
-            document.getElementById('eventAll').checked = allChecked;
-            const anyChecked = ['eventL1', 'eventL2', 'eventL3'].some(id => document.getElementById(id).checked);
-            if (anyChecked) document.getElementById('eventNone').checked = false;
-        }
-
-        function toggleEditItemEventNone() {
-            if (document.getElementById('editItemEventNone').checked) {
-                ['editItemEventAll', 'editItemEventL1', 'editItemEventL2', 'editItemEventL3'].forEach(id => document.getElementById(id).checked = false);
-            }
-        }
-
-        function toggleEditItemEventAll() {
-            const checked = document.getElementById('editItemEventAll').checked;
-            ['editItemEventL1', 'editItemEventL2', 'editItemEventL3'].forEach(id => document.getElementById(id).checked = checked);
-            if (checked) document.getElementById('editItemEventNone').checked = false;
-        }
-
-        function syncEditItemEventAll() {
-            const allChecked = ['editItemEventL1', 'editItemEventL2', 'editItemEventL3'].every(id => document.getElementById(id).checked);
-            document.getElementById('editItemEventAll').checked = allChecked;
-            const anyChecked = ['editItemEventL1', 'editItemEventL2', 'editItemEventL3'].some(id => document.getElementById(id).checked);
-            if (anyChecked) document.getElementById('editItemEventNone').checked = false;
-        }
-
         async function addItem() {
             const name = document.getElementById('itemName').value.trim();
             const category = document.getElementById('itemCategory').value;
@@ -1474,7 +1428,7 @@
                 return;
             }
 
-            const usedForEvents = ['eventL1', 'eventL2', 'eventL3']
+            const usedForEvents = ['eventL1', 'eventL2', 'eventL3', 'eventInternal']
                 .filter(id => document.getElementById(id).checked)
                 .map(id => document.getElementById(id).value)
                 .join(', ');
@@ -1501,7 +1455,7 @@
                 document.getElementById('itemQuantity').value = '';
                 document.getElementById('itemThreshold').value = '10';
                 document.getElementById('itemLocation').value = '';
-                ['eventNone', 'eventAll', 'eventL1', 'eventL2', 'eventL3'].forEach(id => document.getElementById(id).checked = false);
+                ['eventL1', 'eventL2', 'eventL3', 'eventInternal'].forEach(id => document.getElementById(id).checked = false);
 
                 closeAddItemModal();
                 await loadAllData(false);
@@ -1653,7 +1607,7 @@
 
         function buildEventCellHtml(item) {
             const selected = (item.usedForEvents || '').split(',').map(s => s.trim()).filter(Boolean);
-            if (selected.length === 0) return '<span class="event-badge" style="background-color:#999;">None</span>';
+            if (selected.length === 0) return '<span style="color:#999; font-size:0.85em;">—</span>';
             return selected.map(tag => `<span class="event-badge">${escapeHtml(tag)}</span>`).join(' ');
         }
 
@@ -1697,8 +1651,7 @@
             document.getElementById('editItemEventL1').checked = selectedTags.includes('L1');
             document.getElementById('editItemEventL2').checked = selectedTags.includes('L2');
             document.getElementById('editItemEventL3').checked = selectedTags.includes('L3');
-            document.getElementById('editItemEventNone').checked = selectedTags.length === 0;
-            syncEditItemEventAll();
+            document.getElementById('editItemEventInternal').checked = selectedTags.includes('Internal');
 
             document.getElementById('editItemModal').classList.add('show');
         }
@@ -1718,7 +1671,7 @@
             const newThreshold = parseInt(document.getElementById('editItemThreshold').value);
             const newLocation = document.getElementById('editItemLocation').value.trim();
             const editedBy = document.getElementById('editItemEditedBy').value.trim();
-            const newTags = ['L1', 'L2', 'L3'].filter(t => document.getElementById(`editItemEvent${t}`).checked).join(', ');
+            const newTags = ['L1', 'L2', 'L3', 'Internal'].filter(t => document.getElementById(`editItemEvent${t}`).checked).join(', ');
 
             if (!newName) {
                 alert('Name cannot be empty');
@@ -1831,11 +1784,7 @@
                     if (stockFilter === 'high' && item.quantity <= item.threshold) return;
                     if (eventFilter) {
                         const tags = (item.usedForEvents || '').split(',').map(s => s.trim()).filter(Boolean);
-                        if (eventFilter === 'None') {
-                            if (tags.length > 0) return;
-                        } else if (!tags.includes(eventFilter)) {
-                            return;
-                        }
+                        if (!tags.includes(eventFilter)) return;
                     }
                     if (dateFilter && item.dateAdded !== dateFilter) return;
 
@@ -2597,7 +2546,7 @@
         }
 
         function buildGroupedLowStockHtml() {
-            const groups = { 'All Events': [], 'L1': [], 'L2': [], 'L3': [], 'None': [] };
+            const groups = { 'All Events': [], 'L1': [], 'L2': [], 'L3': [], 'Internal': [], 'Untagged': [] };
 
             for (const category in inventory) {
                 inventory[category].forEach(item => {
@@ -2608,7 +2557,7 @@
                     if (tags.includes('L1') && tags.includes('L2') && tags.includes('L3')) {
                         groups['All Events'].push(entry);
                     } else if (tags.length === 0) {
-                        groups['None'].push(entry);
+                        groups['Untagged'].push(entry);
                     } else {
                         tags.forEach(tag => {
                             if (groups[tag]) groups[tag].push(entry);
@@ -2617,7 +2566,7 @@
                 });
             }
 
-            const order = ['All Events', 'L1', 'L2', 'L3', 'None'];
+            const order = ['All Events', 'L1', 'L2', 'L3', 'Internal', 'Untagged'];
             let html = '';
             let isFirstGroup = true;
             let hasAny = false;
