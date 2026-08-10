@@ -519,7 +519,7 @@
             height: 56px;
             background-color: #131628;
             align-items: center;
-            justify-content: space-between;
+            justify-content: center;
             padding: 0 16px;
             z-index: 4000;
         }
@@ -530,33 +530,61 @@
             padding: 0;
         }
 
-        .hamburger-btn {
-            background: none;
-            border: none;
-            padding: 8px;
-            cursor: pointer;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .hamburger-btn span {
-            display: block;
-            width: 24px;
-            height: 2px;
-            background-color: #ffffff;
-        }
-
-        .sidebar-overlay {
+        /* ===== Mobile bottom tab bar ===== */
+        .mobile-bottom-nav {
             display: none;
             position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 2500;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: #131628;
+            z-index: 4000;
+            justify-content: space-around;
+            align-items: center;
+            padding: 8px 4px calc(8px + env(safe-area-inset-bottom, 0px));
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
         }
 
-        .sidebar-overlay.show {
-            display: block;
+        .bottom-nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            color: rgba(255, 255, 255, 0.55);
+            font-size: 0.68em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            padding: 6px 14px;
+            border-radius: 12px;
+            transition: color 0.2s;
+            flex: 1;
+        }
+
+        .bottom-nav-item .icon {
+            font-size: 1.35em;
+            line-height: 1;
+        }
+
+        .bottom-nav-item.active {
+            color: #ffffff;
+        }
+
+        .bottom-nav-item.active .icon {
+            filter: drop-shadow(0 0 6px rgba(111, 0, 255, 0.9));
+        }
+
+        .bottom-nav-item .dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background-color: transparent;
+            margin-top: 1px;
+        }
+
+        .bottom-nav-item.active .dot {
+            background-color: #6f00ff;
         }
 
         /* ===== Mobile / tablet responsive rules ===== */
@@ -570,24 +598,19 @@
                 display: flex;
             }
 
-            .sidebar {
-                width: 250px;
-                max-width: 80vw;
-                transform: translateX(-100%);
-                transition: transform 0.25s ease;
-                z-index: 3000;
-                top: 0;
-                padding-top: 20px;
+            .mobile-bottom-nav {
+                display: flex;
             }
 
-            .sidebar.open {
-                transform: translateX(0);
+            .sidebar {
+                display: none;
             }
 
             .main-content {
                 margin-left: 0;
                 padding: 16px;
                 padding-top: 72px;
+                padding-bottom: 90px;
                 width: 100%;
             }
 
@@ -661,14 +684,31 @@
     <div id="syncStatus" class="synced" style="opacity:0;">● Synced</div>
 
     <div class="mobile-topbar">
-        <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Open menu">
-            <span></span><span></span><span></span>
-        </button>
         <div class="logo">📦 Inventory</div>
-        <div style="width:40px;"></div>
     </div>
 
-    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+    <div class="mobile-bottom-nav" id="mobileBottomNav">
+        <div class="bottom-nav-item active" data-tab="home" onclick="switchTab('home')">
+            <span class="icon">🏠</span>
+            <span>Home</span>
+            <span class="dot"></span>
+        </div>
+        <div class="bottom-nav-item" data-tab="items" onclick="switchTab('items')">
+            <span class="icon">📦</span>
+            <span>Items</span>
+            <span class="dot"></span>
+        </div>
+        <div class="bottom-nav-item" data-tab="events" onclick="switchTab('events')">
+            <span class="icon">📅</span>
+            <span>Events</span>
+            <span class="dot"></span>
+        </div>
+        <div class="bottom-nav-item" data-tab="shipping" onclick="switchTab('shipping')">
+            <span class="icon">🚚</span>
+            <span>Shipping</span>
+            <span class="dot"></span>
+        </div>
+    </div>
 
     <div class="sidebar" id="sidebar">
         <div class="logo">📦 Inventory</div>
@@ -1321,25 +1361,21 @@
         function switchTab(tabName) {
             document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            document.querySelectorAll('.bottom-nav-item').forEach(item => item.classList.remove('active'));
 
             document.getElementById(tabName).classList.add('active');
-            if (window.event && window.event.target) {
-                window.event.target.classList.add('active');
-            }
+
+            // Desktop sidebar
+            document.querySelectorAll('.nav-item').forEach(item => {
+                if (item.getAttribute('onclick') === `switchTab('${tabName}')`) item.classList.add('active');
+            });
+
+            // Mobile bottom tab bar
+            const bottomItem = document.querySelector(`.bottom-nav-item[data-tab="${tabName}"]`);
+            if (bottomItem) bottomItem.classList.add('active');
 
             currentTab = tabName;
             renderCurrentTab();
-            closeSidebar();
-        }
-
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('open');
-            document.getElementById('sidebarOverlay').classList.toggle('show');
-        }
-
-        function closeSidebar() {
-            document.getElementById('sidebar').classList.remove('open');
-            document.getElementById('sidebarOverlay').classList.remove('show');
         }
 
         function openAddItemModal() {
