@@ -1247,6 +1247,19 @@
             return str;
         }
 
+        function formatDateShort(value) {
+            // Same as formatDateOnly but with a 2-digit year (MM/DD/YY) — used on the Shipping tab
+            if (!value) return '';
+            const str = String(value).trim();
+            let m = str.match(/^(\d{4})-(\d{2})-(\d{2})T/); // ISO datetime
+            if (m) return `${m[2]}/${m[3]}/${m[1].slice(2)}`;
+            m = str.match(/^(\d{4})-(\d{2})-(\d{2})$/); // HTML date input value, e.g. 2026-08-03
+            if (m) return `${m[2]}/${m[3]}/${m[1].slice(2)}`;
+            m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); // M/D/YYYY
+            if (m) return `${m[1].padStart(2, '0')}/${m[2].padStart(2, '0')}/${m[3].slice(2)}`;
+            return str;
+        }
+
         function escapeHtml(str) {
             return String(str == null ? '' : str)
                 .replace(/&/g, '&amp;')
@@ -1697,7 +1710,7 @@
 
                 let arrivedCell;
                 if (shipment.arrivalConfirmed === 'Yes') {
-                    arrivedCell = `<span style="background-color:#2e7d32; color:white; padding:4px 12px; border-radius:4px; font-size:0.8em;">✓ Arrived ${escapeHtml(formatDateOnly(shipment.arrivalDate))}</span>`;
+                    arrivedCell = `<span style="background-color:#2e7d32; color:white; padding:4px 12px; border-radius:4px; font-size:0.8em;">✓ Arrived ${escapeHtml(formatDateShort(shipment.arrivalDate))}</span>`;
                 } else if (shipment.arrivalConfirmed === 'No') {
                     arrivedCell = `<button class="delete-btn" style="background-color:#ff9800;" onclick="openArrivalModal('${shipment.id}')">Not Yet — Update</button>`;
                 } else {
@@ -1708,8 +1721,8 @@
                     <tr>
                         <td>${escapeHtml(shipment.itemType)}</td>
                         <td>${shipment.quantity || ''}</td>
-                        <td>${escapeHtml(shipment.datePlaced)}</td>
-                        <td>${escapeHtml(shipment.orderDate)}</td>
+                        <td>${escapeHtml(formatDateShort(shipment.datePlaced))}</td>
+                        <td>${escapeHtml(formatDateShort(shipment.orderDate))}</td>
                         <td><code style="background-color: #f0f0f0; padding: 4px 8px; border-radius: 4px;">${escapeHtml(shipment.tracking)}</code></td>
                         <td>${escapeHtml(shipment.inputBy)}</td>
                         <td style="font-size: 0.9em; color: #666;">${escapeHtml(shipment.notes) || 'N/A'}</td>
