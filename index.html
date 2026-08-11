@@ -1567,7 +1567,7 @@
                 .replace(/'/g, '&#39;');
         }
 
-        const MAX_GUESTS_PER_EVENT = { L1: 115, L2: 40, L3: 11 };
+        const MAX_GUESTS_PER_EVENT = { L1: 115, L2: 30, L3: 11 };
 
         function buildEventsLeftHtml(item) {
             const tags = (item.usedForEvents || '').split(',').map(s => s.trim()).filter(Boolean);
