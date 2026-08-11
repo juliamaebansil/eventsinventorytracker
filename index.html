@@ -1029,7 +1029,7 @@
                         </select>
                     </div>
                     <div>
-                        <label style="margin-bottom: 8px; font-size: 0.85em;">Date Added</label>
+                        <label style="margin-bottom: 8px; font-size: 0.85em;">Date Updated</label>
                         <input type="date" id="filterDate" onchange="applyFilters()" style="width: 100%;">
                     </div>
                 </div>
@@ -1048,7 +1048,7 @@
                             <th>Status</th>
                             <th>Event</th>
                             <th>Location</th>
-                            <th>Date Added</th>
+                            <th>Date Updated</th>
                             <th>Action</th>
                         </tr>
                     </thead>
@@ -1708,18 +1708,26 @@
             setSyncStatus('saving');
 
             try {
+                const fieldsToSave = {
+                    name: newName,
+                    category: newCategory,
+                    quantity: newQuantity,
+                    threshold: newThreshold,
+                    usedForEvents: newTags,
+                    location: newLocation
+                };
+
+                // Only refresh "Date Updated" when the quantity itself changed —
+                // not for category, alert level, event tags, or location edits.
+                if (newQuantity !== editItemOriginal.quantity) {
+                    fieldsToSave.dateAdded = new Date().toLocaleDateString();
+                }
+
                 await apiPost({
                     action: 'updateRowFields',
                     sheet: 'Items',
                     id: currentEditItemId,
-                    fields: {
-                        name: newName,
-                        category: newCategory,
-                        quantity: newQuantity,
-                        threshold: newThreshold,
-                        usedForEvents: newTags,
-                        location: newLocation
-                    }
+                    fields: fieldsToSave
                 });
 
                 await apiPost({
