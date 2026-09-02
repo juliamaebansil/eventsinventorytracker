@@ -766,9 +766,20 @@
                 <div class="card">
                     <h2>👥 This Month's Guests</h2>
                     <div class="stat-number" id="monthlyGuests">0</div>
-                    <p style="color: #999; font-size: 0.9em;">Total event attendance</p>
+                    <p style="color: #999; font-size: 0.9em; margin-bottom: 12px;">Total event attendance</p>
+                    <div id="monthlyGuestsBreakdown"></div>
                 </div>
 
+                <!-- Quarterly Guests -->
+                <div class="card">
+                    <h2>👥 This Quarter's Guests</h2>
+                    <div class="stat-number" id="quarterlyGuests">0</div>
+                    <p style="color: #999; font-size: 0.9em; margin-bottom: 12px;">Total event attendance</p>
+                    <div id="quarterlyGuestsBreakdown"></div>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
                 <!-- Quarterly Usage -->
                 <div class="card">
                     <h2 id="quarterlyUsageTitle">📊 Quarterly Usage</h2>
@@ -1227,7 +1238,6 @@
         let inventory = {};
         CATEGORIES.forEach(c => inventory[c] = []);
 
-        let monthlyGuestCount = 0;
         let quarterlyUsageData = {};
         let adjustmentsHistory = [];
         let currentSelectedItem = null;
@@ -1339,9 +1349,6 @@
                     timestamp: row.timestamp,
                     resultingStock: Number(row.resultingStock) || 0
                 }));
-
-                // Derived: monthly guest count = sum of all logged guest counts (simple running total)
-                monthlyGuestCount = eventHistory.reduce((sum, e) => sum + (e.guestCount || 0), 0);
 
                 renderCurrentTab();
                 setSyncStatus('synced');
@@ -1556,6 +1563,50 @@
 
             quarterlyUsageData = usage;
             return current.label;
+        }
+
+        function computeMonthlyGuestData() {
+            const now = new Date();
+            const currentMonth = now.getMonth();
+            const currentYear = now.getFullYear();
+
+            const breakdown = { L1: 0, L2: 0, L3: 0 };
+            let total = 0;
+
+            eventHistory.forEach(event => {
+                const d = parseDateFlexible(event.date);
+                if (!d) return;
+                if (d.getMonth() !== currentMonth || d.getFullYear() !== currentYear) return;
+
+                const guestCount = event.guestCount || 0;
+                total += guestCount;
+                if (Object.prototype.hasOwnProperty.call(breakdown, event.eventType)) {
+                    breakdown[event.eventType] += guestCount;
+                }
+            });
+
+            return { total, breakdown };
+        }
+
+        function computeQuarterlyGuestData() {
+            const current = getQuarterInfo(new Date());
+            const breakdown = { L1: 0, L2: 0, L3: 0 };
+            let total = 0;
+
+            eventHistory.forEach(event => {
+                const d = parseDateFlexible(event.date);
+                if (!d) return;
+                const q = getQuarterInfo(d);
+                if (q.quarterIndex !== current.quarterIndex || q.year !== current.year) return;
+
+                const guestCount = event.guestCount || 0;
+                total += guestCount;
+                if (Object.prototype.hasOwnProperty.call(breakdown, event.eventType)) {
+                    breakdown[event.eventType] += guestCount;
+                }
+            });
+
+            return { total, breakdown };
         }
 
         function escapeHtml(str) {
@@ -1904,9 +1955,13 @@
 
         function renderAdjustmentsSummary() {
             const summary = document.getElementById('adjustmentsSummary');
-            
-            if (adjustmentsHistory.length === 0) {
-                summary.innerHTML = '<p style="color: #999; text-align: center;">No adjustments made yet</p>';
+
+            // Only show adjustments that actually changed stock — skip edit-log entries
+            // where quantity delta is 0 (e.g. just a category, alert level, or event tag change)
+            const stockAdjustments = adjustmentsHistory.filter(adj => adj.quantity !== 0);
+
+            if (stockAdjustments.length === 0) {
+                summary.innerHTML = '<p style="color: #999; text-align: center;">No stock adjustments made yet</p>';
                 return;
             }
 
@@ -1926,7 +1981,7 @@
                 <tbody>
             `;
 
-            adjustmentsHistory.slice().reverse().forEach(adj => {
+            stockAdjustments.slice().reverse().forEach(adj => {
                 let badgeColor = '#ff4444';
                 let badgeText = 'Removed';
                 if (adj.type === 'add') { badgeColor = '#6f00ff'; badgeText = 'Added'; }
@@ -2637,7 +2692,21 @@
             });
             document.getElementById('quarterlyUsage').innerHTML = quarterlyHTML || '<div class="empty-state">No usage logged yet this quarter</div>';
 
-            document.getElementById('monthlyGuests').textContent = monthlyGuestCount;
+            const monthlyGuestData = computeMonthlyGuestData();
+            document.getElementById('monthlyGuests').textContent = monthlyGuestData.total;
+            document.getElementById('monthlyGuestsBreakdown').innerHTML = `
+                <div style="font-size: 0.9em; color: #333; margin-bottom: 4px;">L1 Guests: <strong style="color: #6f00ff;">${monthlyGuestData.breakdown.L1}</strong></div>
+                <div style="font-size: 0.9em; color: #333; margin-bottom: 4px;">L2 Guests: <strong style="color: #6f00ff;">${monthlyGuestData.breakdown.L2}</strong></div>
+                <div style="font-size: 0.9em; color: #333;">L3 Guests: <strong style="color: #6f00ff;">${monthlyGuestData.breakdown.L3}</strong></div>
+            `;
+
+            const quarterlyGuestData = computeQuarterlyGuestData();
+            document.getElementById('quarterlyGuests').textContent = quarterlyGuestData.total;
+            document.getElementById('quarterlyGuestsBreakdown').innerHTML = `
+                <div style="font-size: 0.9em; color: #333; margin-bottom: 4px;">L1 Guests: <strong style="color: #6f00ff;">${quarterlyGuestData.breakdown.L1}</strong></div>
+                <div style="font-size: 0.9em; color: #333; margin-bottom: 4px;">L2 Guests: <strong style="color: #6f00ff;">${quarterlyGuestData.breakdown.L2}</strong></div>
+                <div style="font-size: 0.9em; color: #333;">L3 Guests: <strong style="color: #6f00ff;">${quarterlyGuestData.breakdown.L3}</strong></div>
+            `;
         }
 
         // Initialize: load everything from the shared Google Sheet
