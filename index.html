@@ -1861,6 +1861,7 @@
 
         function populateInventorySelect() {
             const select = document.getElementById('adjustItemSelect');
+            const previousValue = select.value;
             let options = '<option value="">-- Select an item --</option>';
 
             for (const category in inventory) {
@@ -1870,6 +1871,9 @@
             }
 
             select.innerHTML = options;
+            if (previousValue && select.querySelector(`option[value="${previousValue}"]`)) {
+                select.value = previousValue;
+            }
         }
 
         function updateAdjustmentForm() {
@@ -2427,6 +2431,7 @@
 
         function populateManualItemSelect() {
             const select = document.getElementById('manualItemSelect');
+            const previousValue = select.value;
             let options = '<option value="">-- Select Item --</option>';
 
             for (const category in inventory) {
@@ -2436,6 +2441,9 @@
             }
 
             select.innerHTML = options;
+            if (previousValue && select.querySelector(`option[value="${previousValue}"]`)) {
+                select.value = previousValue;
+            }
         }
 
         async function submitManualAdjustment() {
